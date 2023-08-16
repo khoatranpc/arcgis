@@ -1,7 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import Map from '@arcgis/core/Map';
+import wellknown from 'wellknown';
 import Config from '@arcgis/core/config';
 import MapView from '@arcgis/core/views/MapView';
+import TextSymbol from '@arcgis/core/symbols/TextSymbol';
+import Color from '@arcgis/core/Color';
+import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
+import Graphic from '@arcgis/core/Graphic';
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import MapWid from "../MapWidget";
 
@@ -12,28 +17,113 @@ const MyMap = () => {
     const mapRef = useRef();
     useEffect(() => {
         Config.apiKey = API_KEY
-        const featureLayer = new FeatureLayer({
-            apiKey: API_KEY,
-            url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
-        })
+        // const featureLayer = new FeatureLayer({
+        //     apiKey: API_KEY,
+        //     url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
+        // })
+
         const map = new Map({
-            basemap: 'arcgis-topographic',
+            basemap: 'streets-vector',
+            // basemap: '',
         })
-        map.add(featureLayer);
-        const mapView = new MapView({
-            container: mapRef.current,
-            map: map,
-            zoom: 13,
-            center: [-118.80543, 34.02700],
-        }).when((view) => {
-            setView(view);
-        })
+        // map.add(featureLayer);
+
+        fetch('http://localhost:8888/connect/main.php').then((rs) => {
+            return rs.json()
+        }).then((rs) => {
+            const listPolygon = [];
+            const graphics = rs.map(item => {
+                const geometry = wellknown.parse(item.geometry); // Parse WKT to geometry
+                const polygonCoordinates = geometry.coordinates.flat();
+                // console.log(polygonCoordinates);
+                const polygon = {
+                    ...item,
+                    type: 'polygon',
+                    rings: polygonCoordinates,
+                };
+                listPolygon.push(polygon);
+                // Create a graphic with the converted Polygon geometry
+                const graphic = new Graphic({
+                    geometry: polygon,
+                    symbol: {
+                        type: 'simple-fill',
+                        color: [255, 0, 0, 0.1],
+                        outline: {
+                            color: [0, 0, 0, 1], // Black with 100% opacity
+                            width: 1
+                        },
+                    },
+                    attributes: {
+                        label: item.varname_1
+                    }
+                });
+
+                return graphic;
+            });
+            const graphicsLayer = new GraphicsLayer({
+                graphics: graphics
+            });
+            // // Add the graphics layer to the map
+            const mapView = new MapView({
+                container: mapRef.current,
+                map: map,
+                zoom: 13,
+                center: [105.854444, 21.028511],
+            }).when((view) => {
+                setView(view);
+                if (view) {
+                    view.on("click", (event) => {
+                        const clickedPoint = view.toMap({ x: event.x, y: event.y });
+                        console.log(clickedPoint);
+
+                        const newText = new TextSymbol({
+                            text: 'Click',
+                            color: new Color([0, 0, 0]),
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            },
+
+                        })
+                        const graphic = new Graphic({
+                            geometry: clickedPoint,
+                            symbol: newText
+                        });
+                        graphicsLayer.graphics.forEach(graphic => {
+                            if (graphic.geometry.type === 'polygon') {
+                                const polygon = graphic.geometry;
+                                const isInside = polygon.contains(clickedPoint);
+                                if (isInside) {
+                                    const SRID = clickedPoint.spatialReference.wkid;
+                                    const GET_POINT = {
+                                        latitude: clickedPoint.latitude,
+                                        longitude: clickedPoint.longitude
+                                    };
+                                    const getCurrentPolygon = JSON.stringify(polygon.rings);
+                                    const crrLocation = listPolygon.find((item) => {
+                                        return JSON.stringify(item.rings) === getCurrentPolygon
+                                    });
+                                    console.log(crrLocation);
+                                }
+                            }
+                        });
+                        // Add the graphic to the graphics layer
+                        graphicsLayer.add(graphic);
+                        // Add the graphic to the graphics layer
+                    })
+                }
+            });
+            map.add(graphicsLayer);
+        }).catch((err) => {
+            console.log(err);
+        });
     }, []);
-    // useEffect(() => {
-    //     if (view) {
-    //         view.ui.components = (["attribution", "compass", "zoom"]);
-    //     }
-    // }, [view]);
+    useEffect(() => {
+        if (view) {
+            // event click 
+
+        }
+    }, [view]);
     return (
         <div ref={mapRef} style={{ height: '100vh' }}>
             {view && <MapWid view={view} />}
