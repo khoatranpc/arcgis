@@ -1,16 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import Form from 'react-bootstrap/Form';
-import { Table } from 'antd';
+import { Table, Select } from 'antd';
 import Map from '@arcgis/core/Map';
-import wellknown from 'wellknown';
 import Config from '@arcgis/core/config';
 import MapView from '@arcgis/core/views/MapView';
-import TextSymbol from '@arcgis/core/symbols/TextSymbol';
-import Color from '@arcgis/core/Color';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
-import Graphic from '@arcgis/core/Graphic';
-import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
+// import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import MapWid from "../MapWidget";
+import { createGraphic, getCurrentLocation, getGeometry } from "../utils";
 
 const API_KEY = "AAPK519b0f73274445b099c5ce04e3d7f43f4PbJsDET9wQKENiRoQnSqCFfxzzpRTpbR-L0FRqX1CSIwOf5AF8_qavPJl3Aj6pf"
 const MyMap = () => {
@@ -21,6 +18,36 @@ const MyMap = () => {
         e.preventDefault();
     }
     const columnsInfo = [
+        {
+            key: 'HUMAN',
+            title: 'Dân số'
+        },
+        {
+            key: 'NUMBER_CAR',
+            title: 'SL xe'
+        },
+        {
+            key: 'SUCCESS',
+            title: 'Chuyến HT'
+        },
+        {
+            key: 'SUCCESS_RATE',
+            title: 'Hoàn thành(%)'
+        },
+        {
+            key: 'HUMAN_RATE',
+            title: 'Người dùng(%)'
+        },
+        {
+            key: 'STARTEGY',
+            title: 'Chiến lược'
+        }
+    ];
+    const columnsTop = [
+        {
+            key: 'RANK',
+            title: 'Hạng'
+        },
         {
             key: 'AREA',
             title: 'Tỉnh/TP'
@@ -35,15 +62,15 @@ const MyMap = () => {
         },
         {
             key: 'SUCCESS',
-            title: 'CĐ hoàn thành'
+            title: 'Chuyến HT'
         },
         {
             key: 'SUCCESS_RATE',
-            title: 'TL hoàn thành'
+            title: 'Hoàn thành(%)'
         },
         {
             key: 'HUMAN_RATE',
-            title: 'TL người dùng'
+            title: 'Người dùng(%)'
         },
     ];
     useEffect(() => {
@@ -66,33 +93,8 @@ const MyMap = () => {
         fetch('http://localhost:8888/connect/main.php').then((rs) => {
             return rs.json()
         }).then((rs) => {
-            const listPolygon = [];
             const graphics = rs.map(item => {
-                const geometry = wellknown.parse(item.geometry); // Parse WKT to geometry
-                const polygonCoordinates = geometry.coordinates.flat();
-                // console.log(polygonCoordinates);
-                const polygon = {
-                    ...item,
-                    type: 'polygon',
-                    rings: polygonCoordinates,
-                };
-                listPolygon.push(polygon);
-                // Create a graphic with the converted Polygon geometry
-                const graphic = new Graphic({
-                    geometry: polygon,
-                    symbol: {
-                        type: 'simple-fill',
-                        color: [255, 0, 0, 0.1],
-                        outline: {
-                            color: [0, 0, 0, 1], // Black with 100% opacity
-                            width: 1
-                        },
-                    },
-                    attributes: {
-                        label: item.varname_1
-                    }
-                });
-
+                const graphic = createGraphic(item);
                 return graphic;
             });
             const graphicsLayer = new GraphicsLayer({
@@ -107,43 +109,16 @@ const MyMap = () => {
             }).when((view) => {
                 setView(view);
                 if (view) {
-                    view.on("click", (event) => {
+                    view.on("click", async (event) => {
                         const clickedPoint = view.toMap({ x: event.x, y: event.y });
-                        console.log(clickedPoint);
-
-                        const newText = new TextSymbol({
-                            text: 'Click',
-                            color: new Color([0, 0, 0]),
-                            font: {
-                                size: 12,
-                                weight: 'bold'
-                            },
-
-                        })
-                        const graphic = new Graphic({
-                            geometry: clickedPoint,
-                            symbol: newText
+                        const crrLocation = await getCurrentLocation({
+                            latitude: clickedPoint.latitude,
+                            longitude: clickedPoint.longitude
                         });
-                        graphicsLayer.graphics.forEach(graphic => {
-                            if (graphic.geometry.type === 'polygon') {
-                                const polygon = graphic.geometry;
-                                const isInside = polygon.contains(clickedPoint);
-                                if (isInside) {
-                                    const SRID = clickedPoint.spatialReference.wkid;
-                                    const GET_POINT = {
-                                        latitude: clickedPoint.latitude,
-                                        longitude: clickedPoint.longitude
-                                    };
-                                    const getCurrentPolygon = JSON.stringify(polygon.rings);
-                                    const crrLocation = listPolygon.find((item) => {
-                                        return JSON.stringify(item.rings) === getCurrentPolygon
-                                    });
-                                    console.log(crrLocation);
-                                }
-                            }
-                        });
+                        const crrGraphic = createGraphic(crrLocation.data, true)
                         // Add the graphic to the graphics layer
-                        graphicsLayer.add(graphic);
+                        graphicsLayer.add(crrGraphic);
+                        console.log(crrGraphic);
                         // Add the graphic to the graphics layer
                     })
                 }
@@ -164,24 +139,27 @@ const MyMap = () => {
             <div className="search-form">
                 <Form onSubmit={handleSubmit}>
                     <Form.Group className="mb-3" controlId="exampleForm.ControlInput1">
-                        <Form.Control type="text" placeholder="Tìm kiếm tỉnh/thành phố" />
+                        <Select
+                            showSearch
+                            placeholder="Nhập Tỉnh/TP"
+                        />
                     </Form.Group>
                 </Form>
                 <div className="legend">
                     <Table
-                        title={(data)=>{
-                            return <span>Thông tin</span>
+                        title={(data) => {
+                            return <span>Thông tin thành phố: {'varaiable'}</span>
                         }}
                         columns={columnsInfo}
                         size="small"
                     />
-                     {/* <Table
-                        title={(data)=>{
-                            return <span>Top 5</span>
+                    <Table
+                        title={(data) => {
+                            return <span>Top 5 thành phố có chỉ số cao nhất</span>
                         }}
                         columns={columnsTop}
                         size="small"
-                    /> */}
+                    />
                 </div>
             </div>
             {view && <MapWid view={view} />}
