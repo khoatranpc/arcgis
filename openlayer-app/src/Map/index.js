@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
+import Form from 'react-bootstrap/Form';
+import { Table } from 'antd';
 import Map from '@arcgis/core/Map';
 import wellknown from 'wellknown';
 import Config from '@arcgis/core/config';
@@ -15,6 +17,35 @@ const MyMap = () => {
     const [view, setView] = useState(null);
 
     const mapRef = useRef();
+    const handleSubmit = (e) => {
+        e.preventDefault();
+    }
+    const columnsInfo = [
+        {
+            key: 'AREA',
+            title: 'Tỉnh/TP'
+        },
+        {
+            key: 'HUMAN',
+            title: 'DS'
+        },
+        {
+            key: 'NUMBER_CAR',
+            title: 'SL xe'
+        },
+        {
+            key: 'SUCCESS',
+            title: 'CĐ hoàn thành'
+        },
+        {
+            key: 'SUCCESS_RATE',
+            title: 'TL hoàn thành'
+        },
+        {
+            key: 'HUMAN_RATE',
+            title: 'TL người dùng'
+        },
+    ];
     useEffect(() => {
         Config.apiKey = API_KEY
         // const featureLayer = new FeatureLayer({
@@ -25,6 +56,10 @@ const MyMap = () => {
         const map = new Map({
             basemap: 'streets-vector',
             // basemap: '',
+        })
+        const testView = new MapView({
+            map: map,
+            container: mapRef.current,
         })
         // map.add(featureLayer);
 
@@ -121,13 +156,36 @@ const MyMap = () => {
     useEffect(() => {
         if (view) {
             // event click 
-
         }
     }, [view]);
     return (
-        <div ref={mapRef} style={{ height: '100vh' }}>
+        <div style={{ height: '100vh' }}>
+            <div ref={mapRef} style={{ height: '100vh' }}></div>
+            <div className="search-form">
+                <Form onSubmit={handleSubmit}>
+                    <Form.Group className="mb-3" controlId="exampleForm.ControlInput1">
+                        <Form.Control type="text" placeholder="Tìm kiếm tỉnh/thành phố" />
+                    </Form.Group>
+                </Form>
+                <div className="legend">
+                    <Table
+                        title={(data)=>{
+                            return <span>Thông tin</span>
+                        }}
+                        columns={columnsInfo}
+                        size="small"
+                    />
+                     {/* <Table
+                        title={(data)=>{
+                            return <span>Top 5</span>
+                        }}
+                        columns={columnsTop}
+                        size="small"
+                    /> */}
+                </div>
+            </div>
             {view && <MapWid view={view} />}
-        </div>
+        </div >
     )
 }
 

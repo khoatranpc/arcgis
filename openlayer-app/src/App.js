@@ -1,13 +1,17 @@
 import { useEffect } from 'react';
+
 import MyMap from './Map';
-import './App.css';
+import './App.scss';
+
 
 function App() {
   useEffect(() => {
   }, []);
   return (
     <div className="App">
-      <MyMap />
+      <div className="map-view">
+        <MyMap />
+      </div>
     </div>
   );
 }

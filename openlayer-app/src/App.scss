@@ -1,0 +1,17 @@
+.map-view {
+    position: relative;
+
+    .search-form {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+
+        input {
+            box-shadow: none;
+        }
+    }
+
+    .esri-component.esri-attribution.esri-widget {
+        display: none;
+    }
+}
