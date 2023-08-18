@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Form from 'react-bootstrap/Form';
-import { Table, Select, Layout, Menu } from 'antd';
+import { Table, Select, Checkbox } from 'antd';
 import Map from '@arcgis/core/Map';
 import Config from '@arcgis/core/config';
 import MapView from '@arcgis/core/views/MapView';
@@ -15,6 +15,7 @@ const MyMap = () => {
 
     const [crrMap, setCrrMap] = useState(null);
     const [listLayer, setListLayer] = useState([]);
+    const [isShowLabel, setIsShowLabel] = useState(false);
 
     const [data, setData] = useState(null);
 
@@ -23,12 +24,6 @@ const MyMap = () => {
     const handleSubmit = (e) => {
         e.preventDefault();
     }
-    const items = [
-        {
-            key: 'test',
-            label: 'option'
-        }
-    ]
     const columnsInfo = [
         {
             key: 'HUMAN',
@@ -93,13 +88,7 @@ const MyMap = () => {
         // })
 
         const map = new Map({
-            // basemap: 'streets',
             basemap: 'none',
-        })
-        const defaultView = new MapView({
-            map,
-            container: mapRef.current,
-            zoom: 20
         })
 
         fetch('http://localhost:8888/connect/main.php').then((rs) => {
@@ -122,13 +111,21 @@ const MyMap = () => {
                 const graphic = createGraphic(item);
                 return graphic;
             });
-            const listGraphicLabel = data.map(item => {
-                const graphicLabel = createGraphic(item, false, true);
-                return graphicLabel;
-            });
-            const graphicsLayer = new GraphicsLayer({
-                graphics: [...graphics, ...listGraphicLabel]
-            });
+            let graphicsLayer;
+            if (!isShowLabel) {
+                graphicsLayer = new GraphicsLayer({
+                    graphics: graphics
+                });
+            } else {
+                const listGraphicLabel = data.map(item => {
+                    const graphicLabel = createGraphic(item, false, true);
+                    return graphicLabel;
+                });
+                graphicsLayer = new GraphicsLayer({
+                    graphics: [...graphics, ...listGraphicLabel]
+                });
+            }
+
             // // Add the graphics layer to the map
             const mapView = new MapView({
                 container: mapRef.current,
@@ -154,14 +151,14 @@ const MyMap = () => {
             });
             crrMap.add(graphicsLayer);
         }
-    }, [data, crrMap]);
+    }, [data, crrMap, isShowLabel]);
     return (
         <div style={{ height: '100vh' }} className="visualize-map">
             <div className="main-content">
-                <div
-                    //  ref={mapRef} 
-                    style={{ height: '100vh', flex: 1, border: '1px solid black' }}></div>
                 <div className="area-function">
+                    <div className="list-layer">
+                        <p><b>Danh sách lớp</b></p>
+                    </div>
                     <div className="form-infor">
                         <Form onSubmit={handleSubmit}>
                             <Form.Group className="mb-3" controlId="exampleForm.ControlInput1">
@@ -188,13 +185,17 @@ const MyMap = () => {
                             />
                         </div>
                     </div>
-                    <div className="side-bar">
-                        <Layout.Sider collapsible>
-                            <div className="demo-logo-vertical" />
-                            <Menu theme="dark" defaultSelectedKeys={['1']} mode="inline" items={items} />
-                        </Layout.Sider>
-                    </div>
                 </div>
+                <div className="view-label">
+                    <Checkbox defaultChecked={isShowLabel} onChange={() => {
+                        setIsShowLabel(!isShowLabel)
+                    }}>
+                        <span>Hiển thị nhãn</span>
+                    </Checkbox>
+                </div>
+                <div
+                    //  ref={mapRef} 
+                    style={{ height: '100vh', flex: 1, border: '1px solid black' }}></div>
                 {view && <MapWid view={view} />}
             </div>
         </div >

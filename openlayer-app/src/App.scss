@@ -11,16 +11,16 @@
     height: 100vh;
 
     .area-function {
-        flex: 1;
-        height: 100%;
+        flex: 0.7;
+        height: 100vh;
         top: 0;
-        padding-top: 15px;
         right: 15px;
         display: flex;
+        flex-direction: column;
 
-        .form-infor {
-            display: flex;
-            flex-direction: column;
+        .list-layer {
+            flex: 1;
+            background-color: rgb(255, 255, 255);
         }
 
         .ant-select-show-search {
@@ -28,19 +28,23 @@
             margin-bottom: 12px;
         }
 
-        .legend {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding-bottom: 15px;
-        }
-
         .side-bar {
-            flex: 1;
+            flex: 0.3;
         }
+    }
+
+    .form-infor {
+        display: flex;
+        flex-direction: column;
+        right: 0;
     }
 
     .esri-component.esri-attribution.esri-widget {
         display: none;
+    }
+
+    .view-label {
+        position: absolute;
+        right: 0;
     }
 }

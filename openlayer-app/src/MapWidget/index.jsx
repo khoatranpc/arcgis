@@ -1,7 +1,6 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import Home from '@arcgis/core/widgets/Home';
 import Locate from '@arcgis/core/widgets/Locate';
-import ScaleBar from '@arcgis/core/widgets/ScaleBar';
 
 const MapWid = (props) => {
     useEffect(() => {
