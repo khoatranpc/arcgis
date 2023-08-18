@@ -1,4 +1,5 @@
 import Graphic from '@arcgis/core/Graphic';
+import TextSymbol from '@arcgis/core/symbols/TextSymbol';
 import wellknown from 'wellknown';
 
 const getStrategy = (ratingSuccess) => {
@@ -33,7 +34,7 @@ const getCurrentLocation = (coordinates) => {
 const getGeometry = (geometry) => {
     return wellknown.parse(geometry);
 }
-const createGraphic = (record, anyColor) => {
+const createGraphic = (record, anyColor, enabledLable) => {
     const geometry = getGeometry(record.geometry)// Parse WKT to geometry
     const polygonCoordinates = geometry.coordinates.flat();
     // console.log(polygonCoordinates);
@@ -46,6 +47,17 @@ const createGraphic = (record, anyColor) => {
     if (anyColor) {
         for (var i = 0; i < 3; i++)
             rgb.push(Math.floor(Math.random() * 255));
+    }
+    if (enabledLable) {
+        const textSymbol = new TextSymbol({
+            text: record.name_1,
+            color: 'black'
+        });
+        const graphicLabel = new Graphic({
+            geometry: polygon,
+            symbol: textSymbol,
+        });
+        return graphicLabel;
     }
     const graphic = new Graphic({
         geometry: polygon,
