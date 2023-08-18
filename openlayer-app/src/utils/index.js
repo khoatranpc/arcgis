@@ -63,7 +63,7 @@ const createGraphic = (record, anyColor, enabledLable) => {
         geometry: polygon,
         symbol: {
             type: 'simple-fill',
-            color: anyColor ? [255, 0, 0, 0.8] : [255, 0, 0, 0.1],
+            color: anyColor ? [255, 0, 0, 0.8] : '#abb4f5',
             outline: {
                 color: anyColor ? [255, 0, 0, 0.8] : [0, 0, 0, 1], // Black with 100% opacity
                 width: 1

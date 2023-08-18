@@ -14,11 +14,14 @@ const MyMap = () => {
     const [view, setView] = useState(null);
 
     const [crrMap, setCrrMap] = useState(null);
-    const [listLayer, setListLayer] = useState([]);
-    const [isShowLabel, setIsShowLabel] = useState(false);
+    const listGraphicsLayer = useRef([]);
 
+    const [graphicsLayer, setGraphicsLayer] = useState(null);
+    const [isShowLabel, setIsShowLabel] = useState(true);
+    const [graphicLabel, setGraphicLabel] = useState(null);
+    const crrCenter = useRef(null);
+    const crrZoom = useRef(null);
     const [data, setData] = useState(null);
-
 
     const mapRef = useRef();
     const handleSubmit = (e) => {
@@ -88,8 +91,8 @@ const MyMap = () => {
         // })
 
         const map = new Map({
-            basemap: 'none',
-        })
+            basemap: 'streets'
+        });
 
         fetch('http://localhost:8888/connect/main.php').then((rs) => {
             return rs.json()
@@ -101,57 +104,58 @@ const MyMap = () => {
         });
     }, []);
     useEffect(() => {
-        if (view) {
+        if (view && graphicsLayer) {
             // event click 
+            if (view) {
+                view.on("click", async (event) => {
+                    const clickedPoint = view.toMap({ x: event.x, y: event.y });
+                    const crrLocation = await getCurrentLocation({
+                        latitude: clickedPoint.latitude,
+                        longitude: clickedPoint.longitude
+                    });
+                    if (crrLocation.data.length !== 0) {
+
+                        const crrGraphic = createGraphic(crrLocation.data, true)
+                        // Add the graphic to the graphics layer
+                        graphicsLayer.add(crrGraphic);
+                    }
+                });
+                view.on("drag", (event) => {
+                    crrCenter.current = view.center
+                });
+                view.watch("zoom", (zoom) => {
+                    crrZoom.current = zoom;
+                });
+            }
         }
-    }, [view]);
+    }, [view, graphicsLayer, graphicLabel]);
     useEffect(() => {
-        if (data) {
+        if (data && crrMap) {
             const graphics = data.map(item => {
                 const graphic = createGraphic(item);
                 return graphic;
             });
-            let graphicsLayer;
-            if (!isShowLabel) {
-                graphicsLayer = new GraphicsLayer({
-                    graphics: graphics
-                });
-            } else {
-                const listGraphicLabel = data.map(item => {
-                    const graphicLabel = createGraphic(item, false, true);
-                    return graphicLabel;
-                });
-                graphicsLayer = new GraphicsLayer({
-                    graphics: [...graphics, ...listGraphicLabel]
-                });
-            }
-
+            const graphicsLayer = new GraphicsLayer({
+                graphics: graphics
+            });
+            const listGraphicLabel = data.map(item => {
+                const graphicLabel = createGraphic(item, false, true);
+                return graphicLabel;
+            });
+            setGraphicLabel(listGraphicLabel);
+            setGraphicsLayer(graphicsLayer);
             // // Add the graphics layer to the map
             const mapView = new MapView({
                 container: mapRef.current,
                 map: crrMap,
-                center: [105.854444, 21.028511],
+                center: !crrCenter.current ? [106.13811855720901, 16.148615511826023] : crrCenter.current,
+                zoom: !crrZoom.current ? 6 : crrZoom.current
             }).when((view) => {
                 setView(view);
-                if (view) {
-                    view.on("click", async (event) => {
-                        const clickedPoint = view.toMap({ x: event.x, y: event.y });
-                        const crrLocation = await getCurrentLocation({
-                            latitude: clickedPoint.latitude,
-                            longitude: clickedPoint.longitude
-                        });
-                        if (crrLocation.data.length !== 0) {
-
-                            const crrGraphic = createGraphic(crrLocation.data, true)
-                            // Add the graphic to the graphics layer
-                            graphicsLayer.add(crrGraphic);
-                        }
-                    })
-                }
             });
             crrMap.add(graphicsLayer);
         }
-    }, [data, crrMap, isShowLabel]);
+    }, [data, crrMap]);
     return (
         <div style={{ height: '100vh' }} className="visualize-map">
             <div className="main-content">
@@ -187,14 +191,26 @@ const MyMap = () => {
                     </div>
                 </div>
                 <div className="view-label">
-                    <Checkbox defaultChecked={isShowLabel} onChange={() => {
-                        setIsShowLabel(!isShowLabel)
+                    <Checkbox onChange={() => {
+                        setIsShowLabel(!isShowLabel);
+                        if (crrMap && view) {
+                            if (isShowLabel) {
+                                const listlabel = new GraphicsLayer({
+                                    graphics: graphicLabel
+                                });
+                                listGraphicsLayer.current.push(listlabel);
+                                view.map.add(listlabel);
+                            } else {
+                                view.map.remove(listGraphicsLayer.current[0]);
+                                listGraphicsLayer.current.splice(0, 1);
+                            }
+                        }
                     }}>
                         <span>Hiển thị nhãn</span>
                     </Checkbox>
                 </div>
                 <div
-                    //  ref={mapRef} 
+                    ref={mapRef}
                     style={{ height: '100vh', flex: 1, border: '1px solid black' }}></div>
                 {view && <MapWid view={view} />}
             </div>
