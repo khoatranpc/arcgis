@@ -16,11 +16,12 @@ const MyMap = () => {
     const [crrMap, setCrrMap] = useState(null);
     const listGraphicsLayer = useRef([]);
 
-    const [graphicsLayer, setGraphicsLayer] = useState(null);
-    const [isShowLabel, setIsShowLabel] = useState(true);
+    const [defaultGraphicsLayer, setDefaultGraphicsLayer] = useState(null);
+    const [isShowLabel, setIsShowLabel] = useState(false);
     const [graphicLabel, setGraphicLabel] = useState(null);
     const crrCenter = useRef(null);
     const crrZoom = useRef(null);
+    const crrChosenLocation = useRef(null);
     const [data, setData] = useState(null);
 
     const mapRef = useRef();
@@ -104,7 +105,7 @@ const MyMap = () => {
         });
     }, []);
     useEffect(() => {
-        if (view && graphicsLayer) {
+        if (view && defaultGraphicsLayer) {
             // event click 
             if (view) {
                 view.on("click", async (event) => {
@@ -114,10 +115,16 @@ const MyMap = () => {
                         longitude: clickedPoint.longitude
                     });
                     if (crrLocation.data.length !== 0) {
-
-                        const crrGraphic = createGraphic(crrLocation.data, true)
+                        const getGraphic = createGraphic(crrLocation.data, true);
+                        if (crrChosenLocation.current) {
+                            view.map.remove(crrChosenLocation.current);
+                        }
                         // Add the graphic to the graphics layer
-                        graphicsLayer.add(crrGraphic);
+                        const newGraphicLayer = new GraphicsLayer({
+                            graphics: getGraphic
+                        })
+                        view.map.add(newGraphicLayer);
+                        crrChosenLocation.current = newGraphicLayer;
                     }
                 });
                 view.on("drag", (event) => {
@@ -128,7 +135,7 @@ const MyMap = () => {
                 });
             }
         }
-    }, [view, graphicsLayer, graphicLabel]);
+    }, [view, defaultGraphicsLayer, graphicLabel]);
     useEffect(() => {
         if (data && crrMap) {
             const graphics = data.map(item => {
@@ -143,7 +150,7 @@ const MyMap = () => {
                 return graphicLabel;
             });
             setGraphicLabel(listGraphicLabel);
-            setGraphicsLayer(graphicsLayer);
+            setDefaultGraphicsLayer(graphicsLayer);
             // // Add the graphics layer to the map
             const mapView = new MapView({
                 container: mapRef.current,
@@ -156,6 +163,20 @@ const MyMap = () => {
             crrMap.add(graphicsLayer);
         }
     }, [data, crrMap]);
+    useEffect(() => {
+        if (crrMap && view) {
+            if (isShowLabel) {
+                const listlabel = new GraphicsLayer({
+                    graphics: graphicLabel
+                });
+                listGraphicsLayer.current.push(listlabel);
+                view.map.add(listlabel);
+            } else {
+                view.map.remove(listGraphicsLayer.current[0]);
+                listGraphicsLayer.current.splice(0, 1);
+            }
+        }
+    }, [isShowLabel, crrMap, view]);
     return (
         <div style={{ height: '100vh' }} className="visualize-map">
             <div className="main-content">
@@ -175,14 +196,32 @@ const MyMap = () => {
                         <div className="legend">
                             <Table
                                 title={(data) => {
-                                    return <span>Thông tin thành phố: {'varaiable'}</span>
+                                    return <div>
+                                        <span>Thôn tin thành phố</span>
+                                        <Checkbox defaultChecked={isShowLabel} onChange={() => {
+                                            setIsShowLabel((prev) => {
+                                                return !prev;
+                                            });
+                                        }}>
+                                            <span className="toggle">Hiện/Ẩn</span>
+                                        </Checkbox>
+                                    </div>
                                 }}
                                 columns={columnsInfo}
                                 size="small"
                             />
                             <Table
                                 title={(data) => {
-                                    return <span>Top 5 thành phố có chỉ số cao nhất</span>
+                                    return <div>
+                                        <span>Top 5 thành phố có chỉ số cao nhất</span>
+                                        <Checkbox defaultChecked={isShowLabel} onChange={() => {
+                                            setIsShowLabel((prev) => {
+                                                return !prev;
+                                            });
+                                        }}>
+                                            <span className="toggle">Hiện/Ẩn</span>
+                                        </Checkbox>
+                                    </div>
                                 }}
                                 columns={columnsTop}
                                 size="small"
@@ -191,20 +230,10 @@ const MyMap = () => {
                     </div>
                 </div>
                 <div className="view-label">
-                    <Checkbox onChange={() => {
-                        setIsShowLabel(!isShowLabel);
-                        if (crrMap && view) {
-                            if (isShowLabel) {
-                                const listlabel = new GraphicsLayer({
-                                    graphics: graphicLabel
-                                });
-                                listGraphicsLayer.current.push(listlabel);
-                                view.map.add(listlabel);
-                            } else {
-                                view.map.remove(listGraphicsLayer.current[0]);
-                                listGraphicsLayer.current.splice(0, 1);
-                            }
-                        }
+                    <Checkbox defaultChecked={isShowLabel} onChange={() => {
+                        setIsShowLabel((prev) => {
+                            return !prev;
+                        });
                     }}>
                         <span>Hiển thị nhãn</span>
                     </Checkbox>

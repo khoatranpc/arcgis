@@ -35,6 +35,7 @@ const getGeometry = (geometry) => {
     return wellknown.parse(geometry);
 }
 const createGraphic = (record, anyColor, enabledLable) => {
+    // console.log(record);
     const geometry = getGeometry(record.geometry)// Parse WKT to geometry
     const polygonCoordinates = geometry.coordinates.flat();
     // console.log(polygonCoordinates);
