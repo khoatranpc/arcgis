@@ -7,11 +7,16 @@ import MapView from '@arcgis/core/views/MapView';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 // import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import MapWid from "../MapWidget";
-import { createGraphic, getCurrentLocation } from "../utils";
+import { createGraphic, getCurrentLocation, getStrategy } from "../utils";
 
 const API_KEY = "AAPK519b0f73274445b099c5ce04e3d7f43f4PbJsDET9wQKENiRoQnSqCFfxzzpRTpbR-L0FRqX1CSIwOf5AF8_qavPJl3Aj6pf"
 const MyMap = () => {
     const [view, setView] = useState(null);
+
+    const [data5CityHigh, setData5CityHigh] = useState(null);
+    const listGraphicLayerData5Cityhigh = useRef([]);
+    const crrGraphicsLayer5CityHighRef = useRef(null);
+    const [highlight5City, setHighlight5City] = useState(true);
 
     const [crrMap, setCrrMap] = useState(null);
     const listGraphicsLayer = useRef([]);
@@ -19,10 +24,13 @@ const MyMap = () => {
     const [defaultGraphicsLayer, setDefaultGraphicsLayer] = useState(null);
     const [isShowLabel, setIsShowLabel] = useState(false);
     const [graphicLabel, setGraphicLabel] = useState(null);
+
     const crrCenter = useRef(null);
     const crrZoom = useRef(null);
     const crrChosenLocation = useRef(null);
     const [data, setData] = useState(null);
+
+    const [dataCrrLoation, setDataCrrLocation] = useState(null);
 
     const mapRef = useRef();
     const handleSubmit = (e) => {
@@ -35,53 +43,60 @@ const MyMap = () => {
         },
         {
             key: 'NUMBER_CAR',
-            title: 'SL xe'
+            title: 'SL xe',
+            dataIndex: 'numberofcar'
         },
         {
             key: 'SUCCESS',
-            title: 'Chuyến HT'
+            title: 'Chuyến HT',
+            dataIndex: 'numberofcompleted'
         },
         {
             key: 'SUCCESS_RATE',
-            title: 'Hoàn thành(%)'
-        },
-        {
-            key: 'HUMAN_RATE',
-            title: 'Người dùng(%)'
+            title: 'Hoàn thành(%)',
+            render(_, record) {
+                return record ? (Number(record.numberofcompleted) / Number(record.numberofcar) * 100).toFixed(2) : 0;
+            }
         },
         {
             key: 'STARTEGY',
-            title: 'Chiến lược'
+            title: 'Chiến lược',
+            render(_, record) {
+                return record ? getStrategy(Number(record.numberofcompleted) / Number(record.numberofcar)) : ''
+            }
         }
     ];
     const columnsTop = [
         {
             key: 'RANK',
-            title: 'Hạng'
+            title: 'Hạng',
+            render(value, record, index) {
+                return Number(index) + 1;
+            }
         },
         {
             key: 'AREA',
-            title: 'Tỉnh/TP'
-        },
-        {
-            key: 'HUMAN',
-            title: 'DS'
+            title: 'Tỉnh/TP',
+            render(_, record) {
+                return `${record.type_1} ${record.name_1}`
+            }
         },
         {
             key: 'NUMBER_CAR',
-            title: 'SL xe'
+            title: 'SL xe',
+            dataIndex: 'numberofcar'
         },
         {
             key: 'SUCCESS',
-            title: 'Chuyến HT'
+            title: 'Chuyến HT',
+            dataIndex: 'numberofcompleted'
         },
         {
             key: 'SUCCESS_RATE',
-            title: 'Hoàn thành(%)'
-        },
-        {
-            key: 'HUMAN_RATE',
-            title: 'Người dùng(%)'
+            title: 'Hoàn thành(%)',
+            render(_, record) {
+                return ((Number(record.numberofcompleted) / Number(record.numberofcar)) * 100).toFixed(2);
+            }
         },
     ];
     useEffect(() => {
@@ -92,7 +107,7 @@ const MyMap = () => {
         // })
 
         const map = new Map({
-            basemap: 'streets'
+            basemap: 'streets',
         });
 
         fetch('http://localhost:8888/connect/main.php').then((rs) => {
@@ -114,15 +129,27 @@ const MyMap = () => {
                         latitude: clickedPoint.latitude,
                         longitude: clickedPoint.longitude
                     });
-                    if (crrLocation.data.length !== 0) {
+                    if (crrLocation.data) {
+                        setDataCrrLocation(crrLocation.data);
                         const getGraphic = createGraphic(crrLocation.data, true);
                         if (crrChosenLocation.current) {
                             view.map.remove(crrChosenLocation.current);
                         }
+                        const popupContent = `
+        <div class="popup-location">
+          <p>${crrLocation.data.type_1} ${crrLocation.data.name_1}</p>
+          <p>Diện tích: ${String(crrLocation.data.area_km2).slice(0, 5)} km2</p>
+        </div>
+      `;
                         // Add the graphic to the graphics layer
                         const newGraphicLayer = new GraphicsLayer({
                             graphics: getGraphic
                         })
+                        view.popup.open({
+                            title: `${crrLocation.data.name_1}`,
+                            content: popupContent,
+                            location: event.mapPoint
+                        });
                         view.map.add(newGraphicLayer);
                         crrChosenLocation.current = newGraphicLayer;
                     }
@@ -177,6 +204,45 @@ const MyMap = () => {
             }
         }
     }, [isShowLabel, crrMap, view]);
+
+    const showLayerHighlight5Cities = () => {
+        crrGraphicsLayer5CityHighRef.current = null;
+        data5CityHigh.forEach((item) => {
+            const graphicCity = createGraphic(item, false, false, '#00e9ff');
+            listGraphicLayerData5Cityhigh.current.push(graphicCity);
+        });
+        const graphicsLayerTop5 = new GraphicsLayer({
+            graphics: listGraphicLayerData5Cityhigh.current
+        });
+        crrGraphicsLayer5CityHighRef.current = graphicsLayerTop5;
+        view.map.add(crrGraphicsLayer5CityHighRef.current);
+    };
+    useEffect(() => {
+        if (view && data5CityHigh.length) {
+            if (highlight5City) {
+                showLayerHighlight5Cities();
+            } else {
+                view.map.remove(crrGraphicsLayer5CityHighRef.current);
+                crrGraphicsLayer5CityHighRef.current = null;
+            }
+        }
+    }, [highlight5City, view, data5CityHigh]);
+    useEffect(() => {
+        if (!data5CityHigh) {
+            fetch('http://localhost:8888/connect/getStatistic6month5high.php')
+                .then((rs) => rs.json())
+                .then((data) => {
+                    setData5CityHigh(data);
+                })
+        } else {
+            if (view) {
+                if (data5CityHigh.length !== 0) {
+                    showLayerHighlight5Cities();
+                }
+            }
+        }
+    }, [data5CityHigh, view]);
+
     return (
         <div style={{ height: '100vh' }} className="visualize-map">
             <div className="main-content">
@@ -195,34 +261,46 @@ const MyMap = () => {
                         </Form>
                         <div className="legend">
                             <Table
+                                bordered
                                 title={(data) => {
-                                    return <div>
-                                        <span>Thôn tin thành phố</span>
-                                        <Checkbox defaultChecked={isShowLabel} onChange={() => {
-                                            setIsShowLabel((prev) => {
-                                                return !prev;
-                                            });
-                                        }}>
-                                            <span className="toggle">Hiện/Ẩn</span>
+                                    return <div className="title">
+                                        <span>Thông tin: <b>{dataCrrLoation ? dataCrrLoation.type_1 : ''} {dataCrrLoation ? dataCrrLoation.name_1 : ''}</b></span>
+                                        <Checkbox className="toggle">
+                                            <span>Hiện/Ẩn lớp</span>
                                         </Checkbox>
                                     </div>
                                 }}
+                                pagination={false}
+                                dataSource={dataCrrLoation ? [{
+                                    key: 1,
+                                    ...dataCrrLoation
+                                }] : []}
                                 columns={columnsInfo}
                                 size="small"
                             />
                             <Table
+                                bordered
+                                pagination={false}
                                 title={(data) => {
-                                    return <div>
+                                    return <div className="title">
                                         <span>Top 5 thành phố có chỉ số cao nhất</span>
-                                        <Checkbox defaultChecked={isShowLabel} onChange={() => {
-                                            setIsShowLabel((prev) => {
-                                                return !prev;
-                                            });
-                                        }}>
-                                            <span className="toggle">Hiện/Ẩn</span>
+                                        <Checkbox
+                                            defaultChecked={highlight5City}
+                                            className="toggle"
+                                            onChange={() => {
+                                                setHighlight5City(!highlight5City);
+                                            }}
+                                        >
+                                            <span>Hiện/Ẩn lớp</span>
                                         </Checkbox>
                                     </div>
                                 }}
+                                dataSource={data5CityHigh ? data5CityHigh.map((item) => {
+                                    return {
+                                        key: item.id,
+                                        ...item
+                                    }
+                                }) : []}
                                 columns={columnsTop}
                                 size="small"
                             />

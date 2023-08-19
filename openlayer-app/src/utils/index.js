@@ -17,7 +17,7 @@ const getCurrentLocation = (coordinates) => {
         })
         .then((finallyRs) => {
             return {
-                data: finallyRs[0] || [],
+                data: finallyRs[0] || null,
                 success: true,
                 message: 'Thành công!'
             }
@@ -34,8 +34,7 @@ const getCurrentLocation = (coordinates) => {
 const getGeometry = (geometry) => {
     return wellknown.parse(geometry);
 }
-const createGraphic = (record, anyColor, enabledLable) => {
-    // console.log(record);
+const createGraphic = (record, isClickLocation, enabledLable, color) => {
     const geometry = getGeometry(record.geometry)// Parse WKT to geometry
     const polygonCoordinates = geometry.coordinates.flat();
     // console.log(polygonCoordinates);
@@ -45,7 +44,7 @@ const createGraphic = (record, anyColor, enabledLable) => {
     };
     // Create a graphic with the converted Polygon geometry
     const rgb = [];
-    if (anyColor) {
+    if (isClickLocation) {
         for (var i = 0; i < 3; i++)
             rgb.push(Math.floor(Math.random() * 255));
     }
@@ -64,10 +63,10 @@ const createGraphic = (record, anyColor, enabledLable) => {
         geometry: polygon,
         symbol: {
             type: 'simple-fill',
-            color: anyColor ? [255, 0, 0, 0.8] : '#abb4f5',
+            color: color ? color : (isClickLocation ? [255, 0, 0, 0] : '#abb4f5'),
             outline: {
-                color: anyColor ? [255, 0, 0, 0.8] : [0, 0, 0, 1], // Black with 100% opacity
-                width: 1
+                color: color ? color : (isClickLocation ? [255, 0, 0, 0.8] : [0, 0, 0, 1]), // Black with 100% opacity
+                width: isClickLocation ? 3 : 1
             },
         },
         attributes: {
