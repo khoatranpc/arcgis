@@ -34,7 +34,7 @@ const getCurrentLocation = (coordinates) => {
 const getGeometry = (geometry) => {
     return wellknown.parse(geometry);
 }
-const createGraphic = (record, isClickLocation, enabledLable, color) => {
+const createGraphic = (record, isClickLocation, enabledLable, color, notFill) => {
     const geometry = getGeometry(record.geometry)// Parse WKT to geometry
     const polygonCoordinates = geometry.coordinates.flat();
     // console.log(polygonCoordinates);
@@ -63,10 +63,10 @@ const createGraphic = (record, isClickLocation, enabledLable, color) => {
         geometry: polygon,
         symbol: {
             type: 'simple-fill',
-            color: color ? color : (isClickLocation ? [255, 0, 0, 0] : '#abb4f5'),
+            color: notFill ? [0, 0, 0, 0] : (color ? color : (isClickLocation ? [255, 0, 0, 0] : '#abb4f5')),
             outline: {
                 color: color ? color : (isClickLocation ? [255, 0, 0, 0.8] : [0, 0, 0, 1]), // Black with 100% opacity
-                width: isClickLocation ? 3 : 1
+                width: isClickLocation ? 3 : 2
             },
         },
         attributes: {

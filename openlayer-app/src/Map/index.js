@@ -99,6 +99,8 @@ const MyMap = () => {
             }
         },
     ];
+
+    // init map, view, data for viet nam 63 locations
     useEffect(() => {
         Config.apiKey = API_KEY
         // const featureLayer = new FeatureLayer({
@@ -107,7 +109,7 @@ const MyMap = () => {
         // })
 
         const map = new Map({
-            basemap: 'streets',
+            basemap: 'topo',
         });
 
         fetch('http://localhost:8888/connect/main.php').then((rs) => {
@@ -163,10 +165,11 @@ const MyMap = () => {
             }
         }
     }, [view, defaultGraphicsLayer, graphicLabel]);
+    // for view map, layer 63 locations viet nam default
     useEffect(() => {
         if (data && crrMap) {
             const graphics = data.map(item => {
-                const graphic = createGraphic(item);
+                const graphic = createGraphic(item, null, null, null, true);
                 return graphic;
             });
             const graphicsLayer = new GraphicsLayer({
@@ -208,7 +211,7 @@ const MyMap = () => {
     const showLayerHighlight5Cities = () => {
         crrGraphicsLayer5CityHighRef.current = null;
         data5CityHigh.forEach((item) => {
-            const graphicCity = createGraphic(item, false, false, '#00e9ff');
+            const graphicCity = createGraphic(item, false, false, '#f70515', true);
             listGraphicLayerData5Cityhigh.current.push(graphicCity);
         });
         const graphicsLayerTop5 = new GraphicsLayer({
