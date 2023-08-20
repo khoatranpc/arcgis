@@ -7,8 +7,13 @@ import MapView from '@arcgis/core/views/MapView';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 // import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import MapWid from "../MapWidget";
-import { createGraphic, getCurrentLocation, getStrategy } from "../utils";
+import { createGraphic, createNewLayer, getCurrentLocation, getStrategy } from "../utils";
 
+const NameLayer = {
+    BOUNDARY: 'ranh rới Tỉnh/TP',
+    LABEL_BOUNDARY: 'nhãn Tỉnh/TP',
+    TOP_5: 'top 5 Tỉnh/TP',
+}
 const API_KEY = "AAPK519b0f73274445b099c5ce04e3d7f43f4PbJsDET9wQKENiRoQnSqCFfxzzpRTpbR-L0FRqX1CSIwOf5AF8_qavPJl3Aj6pf"
 const MyMap = () => {
     const [view, setView] = useState(null);
@@ -16,10 +21,35 @@ const MyMap = () => {
     const [data5CityHigh, setData5CityHigh] = useState(null);
     const listGraphicLayerData5Cityhigh = useRef([]);
     const crrGraphicsLayer5CityHighRef = useRef(null);
-    const [highlight5City, setHighlight5City] = useState(true);
+    const [highlight5City, setHighlight5City] = useState(false);
 
     const [crrMap, setCrrMap] = useState(null);
-    const listGraphicsLayer = useRef([]);
+
+    const [storeListLayer, setStoreListLayer] = useState([]);
+
+    const handleStoreListLayer = {
+        add(newLayer, name) {
+            if (view) {
+                const findExistedLayer = storeListLayer.find(item => item.name === name);
+                if (!findExistedLayer) {
+                    const createLayer = createNewLayer(storeListLayer, newLayer, name);
+                    storeListLayer.push(createLayer);
+                    // view.map.add(createLayer.layer);
+                    setStoreListLayer([...storeListLayer]);
+                }
+            }
+        },
+        remove(name) {
+            const findIndex = storeListLayer.findIndex((item) => item.name === name);
+            if (view) {
+                if (findIndex >= 0) {
+                    view.map.remove(storeListLayer[findIndex].layer);
+                    storeListLayer.splice(findIndex, 1);
+                    setStoreListLayer([...storeListLayer]);
+                }
+            }
+        }
+    }
 
     const [defaultGraphicsLayer, setDefaultGraphicsLayer] = useState(null);
     const [isShowLabel, setIsShowLabel] = useState(false);
@@ -100,6 +130,18 @@ const MyMap = () => {
         },
     ];
 
+    // pending logic
+    useEffect(() => {
+        if (view) {
+            storeListLayer.forEach((item) => {
+                view.map.remove(item.layer);
+            });
+            storeListLayer.forEach((item) => {
+                view.map.add(item.layer);
+            });
+        }
+    }, [storeListLayer, view]);
+
     // init map, view, data for viet nam 63 locations
     useEffect(() => {
         Config.apiKey = API_KEY
@@ -169,7 +211,7 @@ const MyMap = () => {
     useEffect(() => {
         if (data && crrMap) {
             const graphics = data.map(item => {
-                const graphic = createGraphic(item, null, null, null, true);
+                const graphic = createGraphic(item, null, null, null);
                 return graphic;
             });
             const graphicsLayer = new GraphicsLayer({
@@ -199,11 +241,9 @@ const MyMap = () => {
                 const listlabel = new GraphicsLayer({
                     graphics: graphicLabel
                 });
-                listGraphicsLayer.current.push(listlabel);
-                view.map.add(listlabel);
+                handleStoreListLayer.add(listlabel, NameLayer.LABEL_BOUNDARY);
             } else {
-                view.map.remove(listGraphicsLayer.current[0]);
-                listGraphicsLayer.current.splice(0, 1);
+                handleStoreListLayer.remove(NameLayer.LABEL_BOUNDARY);
             }
         }
     }, [isShowLabel, crrMap, view]);
@@ -217,16 +257,15 @@ const MyMap = () => {
         const graphicsLayerTop5 = new GraphicsLayer({
             graphics: listGraphicLayerData5Cityhigh.current
         });
-        crrGraphicsLayer5CityHighRef.current = graphicsLayerTop5;
-        view.map.add(crrGraphicsLayer5CityHighRef.current);
+        handleStoreListLayer.add(graphicsLayerTop5, NameLayer.TOP_5);
     };
+    // for high light 5 cities
     useEffect(() => {
         if (view && data5CityHigh.length) {
             if (highlight5City) {
                 showLayerHighlight5Cities();
             } else {
-                view.map.remove(crrGraphicsLayer5CityHighRef.current);
-                crrGraphicsLayer5CityHighRef.current = null;
+                handleStoreListLayer.remove(NameLayer.TOP_5);
             }
         }
     }, [highlight5City, view, data5CityHigh]);
@@ -237,12 +276,6 @@ const MyMap = () => {
                 .then((data) => {
                     setData5CityHigh(data);
                 })
-        } else {
-            if (view) {
-                if (data5CityHigh.length !== 0) {
-                    showLayerHighlight5Cities();
-                }
-            }
         }
     }, [data5CityHigh, view]);
 

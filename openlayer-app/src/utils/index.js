@@ -75,9 +75,28 @@ const createGraphic = (record, isClickLocation, enabledLable, color, notFill) =>
     });
     return graphic;
 }
+const createNewLayer = (currentList, layerRef, name) => {
+    /**
+       * interface listGraphicsLayer
+       * {
+       * order: number,
+       * show: boolean,
+       * layer: layerRef,
+       * name: string
+       * }
+    */
+    layerRef.visible = true;
+    const newLayer = {
+        order: currentList.length,
+        layer: layerRef,
+        name: name
+    }
+    return newLayer;
+}
 export {
     getStrategy,
     getCurrentLocation,
     createGraphic,
-    getGeometry
+    getGeometry,
+    createNewLayer
 }
