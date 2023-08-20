@@ -13,6 +13,7 @@ const NameLayer = {
     BOUNDARY: 'ranh rới Tỉnh/TP',
     LABEL_BOUNDARY: 'nhãn Tỉnh/TP',
     TOP_5: 'top 5 Tỉnh/TP',
+    CHOSEN: 'lựa chọn Tỉnh/TP'
 }
 const API_KEY = "AAPK519b0f73274445b099c5ce04e3d7f43f4PbJsDET9wQKENiRoQnSqCFfxzzpRTpbR-L0FRqX1CSIwOf5AF8_qavPJl3Aj6pf"
 const MyMap = () => {
@@ -34,8 +35,8 @@ const MyMap = () => {
                 if (!findExistedLayer) {
                     const createLayer = createNewLayer(storeListLayer, newLayer, name);
                     storeListLayer.push(createLayer);
-                    // view.map.add(createLayer.layer);
-                    setStoreListLayer([...storeListLayer]);
+                    view.map.add(createLayer.layer);
+                    // setStoreListLayer([...storeListLayer]);
                 }
             }
         },
@@ -45,7 +46,7 @@ const MyMap = () => {
                 if (findIndex >= 0) {
                     view.map.remove(storeListLayer[findIndex].layer);
                     storeListLayer.splice(findIndex, 1);
-                    setStoreListLayer([...storeListLayer]);
+                    // setStoreListLayer([...storeListLayer]);
                 }
             }
         }
