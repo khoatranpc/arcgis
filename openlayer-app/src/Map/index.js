@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Form from 'react-bootstrap/Form';
-import { Table, Select, Checkbox } from 'antd';
+import { Table, Select, Checkbox, Tabs, Dropdown, Input } from 'antd';
 import Map from '@arcgis/core/Map';
 import Config from '@arcgis/core/config';
 import MapView from '@arcgis/core/views/MapView';
@@ -8,16 +8,29 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 // import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import MapWid from "../MapWidget";
 import { createGraphic, createNewLayer, getCurrentLocation, getStrategy } from "../utils";
+import Top5 from "./Top5";
+import ListLayer from "./ListLayer";
+import Road from "./Road";
 
+const Color = {
+    BASE_MAP: '#abb4f5',
+    LABEL_BOUNDARY: '#000000',
+    ROAD: '#c300ff'
+}
 const NameLayer = {
-    BOUNDARY: 'ranh rới Tỉnh/TP',
-    LABEL_BOUNDARY: 'nhãn Tỉnh/TP',
-    TOP_5: 'top 5 Tỉnh/TP',
-    CHOSEN: 'lựa chọn Tỉnh/TP'
+    BASE_MAP: 'Bản đồ nền',
+    BOUNDARY: 'Tỉnh/TP',
+    LABEL_BOUNDARY: 'Nhãn Tỉnh/TP',
+    TOP_5: 'Top 5 Tỉnh/TP',
+    CHOSEN: 'Lựa chọn Tỉnh/TP',
+    ROAD: 'Đường'
 }
 const API_KEY = "AAPK519b0f73274445b099c5ce04e3d7f43f4PbJsDET9wQKENiRoQnSqCFfxzzpRTpbR-L0FRqX1CSIwOf5AF8_qavPJl3Aj6pf"
 const MyMap = () => {
     const [view, setView] = useState(null);
+
+    const [dataRoad, setDataRoad] = useState(null);
+    const [showDataRoad, setShowDataRoad] = useState(false);
 
     const [data5CityHigh, setData5CityHigh] = useState(null);
     const listGraphicLayerData5Cityhigh = useRef([]);
@@ -28,15 +41,17 @@ const MyMap = () => {
 
     const [storeListLayer, setStoreListLayer] = useState([]);
 
+    const [isShowBaseMap, setIsShowBaseMap] = useState(true);
+
     const handleStoreListLayer = {
-        add(newLayer, name) {
+        add(newLayer, name, color) {
             if (view) {
                 const findExistedLayer = storeListLayer.find(item => item.name === name);
                 if (!findExistedLayer) {
-                    const createLayer = createNewLayer(storeListLayer, newLayer, name);
+                    const createLayer = createNewLayer(storeListLayer, newLayer, name, color);
                     storeListLayer.push(createLayer);
                     view.map.add(createLayer.layer);
-                    // setStoreListLayer([...storeListLayer]);
+                    setStoreListLayer([...storeListLayer]);
                 }
             }
         },
@@ -46,7 +61,7 @@ const MyMap = () => {
                 if (findIndex >= 0) {
                     view.map.remove(storeListLayer[findIndex].layer);
                     storeListLayer.splice(findIndex, 1);
-                    // setStoreListLayer([...storeListLayer]);
+                    setStoreListLayer([...storeListLayer]);
                 }
             }
         }
@@ -63,15 +78,25 @@ const MyMap = () => {
 
     const [dataCrrLoation, setDataCrrLocation] = useState(null);
 
+    const [optionSearchByName, setOptionSearchByName] = useState([]);
+    const handleSearch = (value) => {
+        if (value) {
+            fetch(`http://localhost:8888/connect/getCurrentLocationByName.php?name=${value}`).then(rs => rs.json()).then((data) => {
+                setOptionSearchByName(data.map((item) => {
+                    return {
+                        key: item.gid,
+                        label: item.name_1,
+                        ...item
+                    }
+                }));
+            });
+        }
+    }
     const mapRef = useRef();
     const handleSubmit = (e) => {
         e.preventDefault();
     }
     const columnsInfo = [
-        {
-            key: 'HUMAN',
-            title: 'Dân số'
-        },
         {
             key: 'NUMBER_CAR',
             title: 'SL xe',
@@ -96,39 +121,6 @@ const MyMap = () => {
                 return record ? getStrategy(Number(record.numberofcompleted) / Number(record.numberofcar)) : ''
             }
         }
-    ];
-    const columnsTop = [
-        {
-            key: 'RANK',
-            title: 'Hạng',
-            render(value, record, index) {
-                return Number(index) + 1;
-            }
-        },
-        {
-            key: 'AREA',
-            title: 'Tỉnh/TP',
-            render(_, record) {
-                return `${record.type_1} ${record.name_1}`
-            }
-        },
-        {
-            key: 'NUMBER_CAR',
-            title: 'SL xe',
-            dataIndex: 'numberofcar'
-        },
-        {
-            key: 'SUCCESS',
-            title: 'Chuyến HT',
-            dataIndex: 'numberofcompleted'
-        },
-        {
-            key: 'SUCCESS_RATE',
-            title: 'Hoàn thành(%)',
-            render(_, record) {
-                return ((Number(record.numberofcompleted) / Number(record.numberofcar)) * 100).toFixed(2);
-            }
-        },
     ];
 
     // pending logic
@@ -167,6 +159,9 @@ const MyMap = () => {
     useEffect(() => {
         if (view && defaultGraphicsLayer) {
             // event click 
+            if (defaultGraphicsLayer) {
+                handleStoreListLayer.add(defaultGraphicsLayer, NameLayer.BOUNDARY, Color['BASE_MAP']);
+            }
             if (view) {
                 view.on("click", async (event) => {
                     const clickedPoint = view.toMap({ x: event.x, y: event.y });
@@ -198,7 +193,19 @@ const MyMap = () => {
                         view.map.add(newGraphicLayer);
                         crrChosenLocation.current = newGraphicLayer;
                     }
+                    view.hitTest(event).then((res) => {
+                        if (res.results.length) {
+                            const clickedGraphics = res.results.map((item) => {
+                                return {
+                                    grahic: item.graphic,
+                                    layer: item.layer
+                                }
+                            });
+                            console.log(clickedGraphics);
+                        }
+                    });
                 });
+
                 view.on("drag", (event) => {
                     crrCenter.current = view.center
                 });
@@ -233,7 +240,7 @@ const MyMap = () => {
             }).when((view) => {
                 setView(view);
             });
-            crrMap.add(graphicsLayer);
+            // crrMap.add(graphicsLayer);
         }
     }, [data, crrMap]);
     useEffect(() => {
@@ -242,21 +249,39 @@ const MyMap = () => {
                 const listlabel = new GraphicsLayer({
                     graphics: graphicLabel
                 });
-                handleStoreListLayer.add(listlabel, NameLayer.LABEL_BOUNDARY);
+                handleStoreListLayer.add(listlabel, NameLayer.LABEL_BOUNDARY, Color['LABEL_BOUNDARY']);
             } else {
                 handleStoreListLayer.remove(NameLayer.LABEL_BOUNDARY);
             }
         }
     }, [isShowLabel, crrMap, view]);
 
+    const items = [
+        {
+            key: 'TOP5',
+            label: 'Top 5 Tỉnh/TP',
+            children: <Top5 data5CityHigh={data5CityHigh} setHighlight5City={setHighlight5City} highlight5City={highlight5City} />
+        },
+        {
+            key: 'ROAD',
+            label: 'Tuyến đường',
+            children: <Road data={dataRoad} showDataRoad={showDataRoad} setShowDataRoad={setShowDataRoad} />
+        },
+        {
+            key: 'LIST_LAYER',
+            label: 'Danh sách lớp',
+            children: <ListLayer storeListLayer={storeListLayer} />
+        },
+    ]
     const showLayerHighlight5Cities = () => {
         crrGraphicsLayer5CityHighRef.current = null;
         data5CityHigh.forEach((item) => {
-            const graphicCity = createGraphic(item, false, false, '#f70515', true);
+            const graphicCity = createGraphic(item, false, false, '#00ffd5');
             listGraphicLayerData5Cityhigh.current.push(graphicCity);
         });
         const graphicsLayerTop5 = new GraphicsLayer({
-            graphics: listGraphicLayerData5Cityhigh.current
+            graphics: listGraphicLayerData5Cityhigh.current,
+            title: NameLayer.TOP_5
         });
         handleStoreListLayer.add(graphicsLayerTop5, NameLayer.TOP_5);
     };
@@ -280,20 +305,94 @@ const MyMap = () => {
         }
     }, [data5CityHigh, view]);
 
+    // data road
+    useEffect(() => {
+        if (!dataRoad) {
+            fetch('http://localhost:8888/connect/getRoad.php')
+                .then((rs) => rs.json())
+                .then(data => {
+                    setDataRoad(data);
+                })
+        }
+    }, [dataRoad]);
+
+    useEffect(() => {
+        if (view) {
+            if (isShowBaseMap) {
+                view.map.basemap = 'topo'
+            } else {
+                view.map.basemap = 'none'
+            }
+        }
+    }, [isShowBaseMap, view]);
+    useEffect(() => {
+        if (view) {
+            if (showDataRoad) {
+                if (dataRoad) {
+                    const listGraphicRoad = dataRoad.map((item) => {
+                        return createGraphic(item, null, null, Color.ROAD, true, 1);
+                    });
+                    const createGraphicLayer = new GraphicsLayer({
+                        graphics: listGraphicRoad,
+                    });
+                    const newLayer = createNewLayer(storeListLayer, createGraphicLayer, NameLayer.ROAD, Color.ROAD);
+                    handleStoreListLayer.add(newLayer.layer, NameLayer.ROAD, Color.ROAD);
+                }
+            } else {
+                handleStoreListLayer.remove(NameLayer.ROAD);
+            }
+        }
+    }, [view, showDataRoad, dataRoad]);
     return (
         <div style={{ height: '100vh' }} className="visualize-map">
             <div className="main-content">
                 <div className="area-function">
-                    <div className="list-layer">
-                        <p><b>Danh sách lớp</b></p>
-                    </div>
                     <div className="form-infor">
                         <Form onSubmit={handleSubmit}>
-                            <Form.Group className="mb-3" controlId="exampleForm.ControlInput1">
-                                <Select
+                            <Form.Group className="mb-8" controlId="exampleForm.ControlInput1">
+                                <Dropdown
+                                    menu={{
+                                        items: optionSearchByName,
+                                        onClick(info) {
+                                            const findLocation = optionSearchByName.find((item) => {
+                                                return Number(item.key) === Number(info.key);
+                                            });
+                                            if (findLocation) {
+                                                setDataCrrLocation(findLocation);
+                                                if (view) {
+                                                    view.map.remove(crrChosenLocation.current);
+                                                    const getGraphic = createGraphic(findLocation, true, null, '#ff9100');
+                                                    const newGraphicLayer = new GraphicsLayer({
+                                                        graphics: getGraphic
+                                                    });
+                                                    view.map.add(newGraphicLayer);
+                                                    crrChosenLocation.current = newGraphicLayer;
+                                                }
+                                            }
+                                        }
+                                    }}
+                                    trigger={['click']}
+                                >
+                                    <Input
+                                        style={{
+                                            width: '300px',
+                                            float: 'right'
+                                        }}
+                                        size="small"
+                                        onChange={(e) => {
+                                            handleSearch(e.target.value);
+                                        }}
+                                        placeholder="Nhập tên Tỉnh/TP"
+                                    />
+                                </Dropdown>
+                                {/* <Select
+                                    onSearch={(value) => {
+                                        handleSearch(value);
+                                    }}
+                                    options={optionSearchByName}
                                     showSearch
                                     placeholder="Nhập Tỉnh/TP"
-                                />
+                                /> */}
                             </Form.Group>
                         </Form>
                         <div className="legend">
@@ -302,9 +401,9 @@ const MyMap = () => {
                                 title={(data) => {
                                     return <div className="title">
                                         <span>Thông tin: <b>{dataCrrLoation ? dataCrrLoation.type_1 : ''} {dataCrrLoation ? dataCrrLoation.name_1 : ''}</b></span>
-                                        <Checkbox className="toggle">
+                                        {/* <Checkbox className="toggle">
                                             <span>Hiện/Ẩn lớp</span>
-                                        </Checkbox>
+                                        </Checkbox> */}
                                     </div>
                                 }}
                                 pagination={false}
@@ -315,34 +414,9 @@ const MyMap = () => {
                                 columns={columnsInfo}
                                 size="small"
                             />
-                            <Table
-                                bordered
-                                pagination={false}
-                                title={(data) => {
-                                    return <div className="title">
-                                        <span>Top 5 thành phố có chỉ số cao nhất</span>
-                                        <Checkbox
-                                            defaultChecked={highlight5City}
-                                            className="toggle"
-                                            onChange={() => {
-                                                setHighlight5City(!highlight5City);
-                                            }}
-                                        >
-                                            <span>Hiện/Ẩn lớp</span>
-                                        </Checkbox>
-                                    </div>
-                                }}
-                                dataSource={data5CityHigh ? data5CityHigh.map((item) => {
-                                    return {
-                                        key: item.id,
-                                        ...item
-                                    }
-                                }) : []}
-                                columns={columnsTop}
-                                size="small"
-                            />
                         </div>
                     </div>
+                    <Tabs items={items} className="list-tab" />
                 </div>
                 <div className="view-label">
                     <Checkbox defaultChecked={isShowLabel} onChange={() => {
@@ -351,6 +425,15 @@ const MyMap = () => {
                         });
                     }}>
                         <span>Hiển thị nhãn</span>
+                    </Checkbox>
+                </div>
+                <div className="view-label view-basemap">
+                    <Checkbox
+                        defaultChecked={isShowBaseMap}
+                        onChange={() => {
+                            setIsShowBaseMap(!isShowBaseMap);
+                        }}>
+                        <span>Hiển thị bản đồ nền</span>
                     </Checkbox>
                 </div>
                 <div

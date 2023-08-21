@@ -11,10 +11,10 @@ const MapWid = (props) => {
         props.view.ui.add(new Locate({
             view: props.view
         }), 'top-left')
-        props.view.ui.add(new BasemapToggle({
-            view: props.view,
-            nextBasemap: "satellite", // The basemap to switch to when toggling
-        }))
+        // props.view.ui.add(new BasemapToggle({
+        //     view: props.view,
+        //     nextBasemap: "satellite", // The basemap to switch to when toggling
+        // }))
     }, []);
     return null;
 }
