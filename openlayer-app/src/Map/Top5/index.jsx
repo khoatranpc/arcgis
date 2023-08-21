@@ -20,18 +20,32 @@ const Top5 = (props) => {
         {
             key: 'NUMBER_CAR',
             title: 'SL xe',
-            dataIndex: 'numberofcar'
+            dataIndex: 'numberofcar',
+            render(value) {
+                return Number(value).toLocaleString();
+            }
         },
         {
             key: 'SUCCESS',
             title: 'Chuyến HT',
-            dataIndex: 'numberofcompleted'
+            dataIndex: 'numberofcompleted',
+            render(value) {
+                return Number(value).toLocaleString();
+            }
+        },
+        {
+            key: 'NUMBEROFTRIPS',
+            title: 'Tổng số chuyến đi',
+            dataIndex: 'numberoftrips',
+            render(value) {
+                return Number(value).toLocaleString();
+            }
         },
         {
             key: 'SUCCESS_RATE',
             title: 'Hoàn thành(%)',
             render(_, record) {
-                return ((Number(record.numberofcompleted) / Number(record.numberofcar)) * 100).toFixed(2);
+                return ((Number(record.numberofcompleted) / Number(record.numberoftrips)) * 100).toFixed(2);
             }
         },
     ];

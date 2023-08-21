@@ -108,10 +108,18 @@ const MyMap = () => {
             dataIndex: 'numberofcompleted'
         },
         {
+            key: 'NUMBEROFTRIPS',
+            title: 'Tổng số chuyến đi',
+            dataIndex: 'numberoftrips',
+            render(value) {
+                return Number(value).toLocaleString();
+            }
+        },
+        {
             key: 'SUCCESS_RATE',
             title: 'Hoàn thành(%)',
             render(_, record) {
-                return record ? (Number(record.numberofcompleted) / Number(record.numberofcar) * 100).toFixed(2) : 0;
+                return record ? (Number(record.numberofcompleted) / Number(record.numberoftrips) * 100).toFixed(2) : 0;
             }
         },
         {
@@ -179,6 +187,7 @@ const MyMap = () => {
         <div class="popup-location">
           <p>${crrLocation.data.type_1} ${crrLocation.data.name_1}</p>
           <p>Diện tích: ${String(crrLocation.data.area_km2).slice(0, 5)} km2</p>
+          <p>Chuyến hoàn thành: ${Number(crrLocation.data.numberofcompleted).toLocaleString()}/${Number(crrLocation.data.numberoftrips).toLocaleString()} chuyến!</p>
         </div>
       `;
                         // Add the graphic to the graphics layer
@@ -201,7 +210,6 @@ const MyMap = () => {
                                     layer: item.layer
                                 }
                             });
-                            console.log(clickedGraphics);
                         }
                     });
                 });
@@ -300,6 +308,9 @@ const MyMap = () => {
             fetch('http://localhost:8888/connect/getStatistic6month5high.php')
                 .then((rs) => rs.json())
                 .then((data) => {
+                    data.sort((a, b) => {
+                        return -(Number(a.numberofcompleted) / Number(a.numberoftrips)) + (Number(b.numberofcompleted) / Number(b.numberoftrips))
+                    });
                     setData5CityHigh(data);
                 })
         }

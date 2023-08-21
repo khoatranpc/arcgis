@@ -2,9 +2,6 @@ import { Checkbox, Table } from 'antd';
 import React, { useEffect } from 'react';
 
 const Road = (props) => {
-    useEffect(() => {
-        // console.log(props.data);
-    }, [])
     const columns = [
         {
             key: 'CODE',
